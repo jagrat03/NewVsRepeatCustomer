@@ -1,0 +1,26 @@
+-- Method1:
+with cte1 as (select userid ,min(orderdate) as first_order_date from sales
+             group by userid)
+select orderdate, flag, 
+count(distinct userid) as cnt_cust,
+sum(revenue) as total_revenue
+from 
+(select sales.*,
+cte1.first_order_date,
+case when sales.orderdate = cte1.first_order_date then 'New'
+else 'repeat' end as flag
+from sales left join cte1 on (sales.userid = cte1.userid)) t1
+group by orderdate, flag
+order by orderdate
+
+
+--Method2:
+select orderdate,
+count(distinct case when rn = 1 then userid end) as new_cust_count,
+count(distinct case when rn > 1 then userid end) as repeat_cust_count,
+sum( case when rn = 1 then revenue end) as new_cust_revenue,
+sum( case when rn > 1 then revenue end) as repeat_cust_revenue
+from (select *,
+dense_rank() over (partition by userid order by orderdate) as rn
+from memebership) t1
+group by orderdate
